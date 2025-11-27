@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Netrunner Quiz: Cyberpunk Protocol</title>
+    <style>
+        /* --- FUENTES E IMPORTACIONES --- */
+        @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Orbitron:wght@400;700;900&display=swap');
+
+        /* --- VARIABLES Y RESET --- */
+        :root {
+            --cp-yellow: #FCEE0A;
+            --cp-cyan: #00F0FF;
+            --cp-red: #FF003C;
+            --cp-bg: #0d0d0d;
+            --cp-panel: #1a1a1a;
+            --cp-text: #000;
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--cp-bg);
+            background-image: 
+                linear-gradient(var(--cp-panel) 1px, transparent 1px),
+                linear-gradient(90deg, var(--cp-panel) 1px, transparent 1px);
+            background-size: 40px 40px;
+            font-family: 'Rajdhani', sans-serif;
+            color: #fff;
+            overflow-x: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            /* Espacio extra abajo para el banner de publicidad */
+            padding-bottom: 70px; 
+        }
+
+        /* --- UTILIDADES VISUALES (GLITCH & CLIP) --- */
+        .glitch-text {
+            font-family: 'Orbitron', sans-serif;
+            position: relative;
+            color: var(--cp-yellow);
+            text-transform: uppercase;
+        }
+        
+        .clip-box {
+            background: var(--cp-panel);
+            border: 1px solid #333;
+            clip-path: polygon(
+                0 0, 
+                100% 0, 
+                100% calc(100% - 20px), 
+                calc(100% - 20px) 100%, 
+                0 100%
+            );
+            padding: 20px;
+            position: relative;
+        }
+
+        .clip-box::before {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 20px;
+            height: 2px;
+            background: var(--cp-cyan);
+            transform: rotate(45deg);
+            transform-origin: 0 0;
+        }
+
+        /* --- PANTALLAS (SCREENS) --- */
+        .screen {
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            height: 100%;
+            padding: 20px;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        .screen.active {
+            display: flex;
+            opacity: 1;
+        }
+
+        /* --- PANTALLA DE INICIO --- */
+        h1 {
+            font-size: 3rem;
+            text-shadow: 2px 2px var(--cp-red), -2px -2px var(--cp-cyan);
+            margin-bottom: 10px;
+            text-align: center;
+            line-height: 1;
+        }
+
+        .subtitle {
+            color: var(--cp-cyan);
+            font-size: 1.2rem;
+            letter-spacing: 2px;
+            margin-bottom: 40px;
+            text-align: center;
+        }
+
+        .start-btn {
+            background: var(--cp-yellow);
+            color: #000;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 900;
+            font-size: 1.5rem;
+            padding: 15px 40px;
+            border: none;
+            clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+            cursor: pointer;
+            transition: transform 0.1s;
+            text-transform: uppercase;
+            box-shadow: 4px 4px 0 var(--cp-cyan);
+        }
+
+        .start-btn:active {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0 var(--cp-cyan);
+        }
+
+        /* --- UI DEL JUEGO --- */
+        .hud-top {
+            width: 100%;
+            max-width: 600px;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.9rem;
+            color: var(--cp-cyan);
+        }
+
+        .timer-bar-container {
+            width: 100%;
+            max-width: 600px;
+            height: 6px;
+            background: #333;
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .timer-bar {
+            height: 100%;
+            width: 100%;
+            background: var(--cp-red);
+            box-shadow: 0 0 10px var(--cp-red);
+            transition: width 1s linear;
+        }
+
+        .question-container {
+            width: 100%;
+            max-width: 600px;
+            margin-bottom: 20px;
+        }
+
+        .question-text {
+            font-size: 1.3rem;
+            font-weight: 600;
+            line-height: 1.4;
+        }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+            width: 100%;
+            max-width: 600px;
+        }
+
+        .option-btn {
+            background: transparent;
+            border: 2px solid #333;
+            color: #fff;
+            padding: 15px;
+            font-size: 1.1rem;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 600;
+            text-align: left;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.2s;
+            clip-path: polygon(0 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%);
+        }
+
+        .option-btn:hover {
+            border-color: var(--cp-cyan);
+            background: rgba(0, 240, 255, 0.1);
+        }
+
+        .option-btn.correct {
+            background: var(--cp-yellow);
+            color: #000;
+            border-color: var(--cp-yellow);
+        }
+
+        .option-btn.wrong {
+            background: var(--cp-red);
+            color: #fff;
+            border-color: var(--cp-red);
+        }
+
+        .option-btn.disabled {
+            opacity: 0.3;
+            pointer-events: none;
+        }
+
+        /* --- AYUDAS (LIFELINES) --- */
+        .lifelines {
+            display: flex;
+            gap: 10px;
+            margin-top: 25px;
+            width: 100%;
+            max-width: 600px;
+            justify-content: center;
+        }
+
+        .lifeline-btn {
+            background: #000;
+            border: 1px solid var(--cp-yellow);
+            color: var(--cp-yellow);
+            padding: 8px 12px;
+            font-size: 0.8rem;
+            font-family: 'Orbitron', sans-serif;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: 0.2s;
+            width: 33%;
+        }
+
+        .lifeline-btn span {
+            font-size: 1.2rem;
+            margin-bottom: 2px;
+        }
+
+        .lifeline-btn.used {
+            opacity: 0.3;
+            pointer-events: none;
+            border-color: #555;
+            color: #555;
+        }
+
+        .lifeline-btn:active {
+            background: var(--cp-yellow);
+            color: #000;
+        }
+
+        /* --- FEEDBACK MODAL --- */
+        .feedback-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            display: flex;
+            justify-content: center;
+            align-items: flex-end; /* Sale de abajo como un HUD */
+            z-index: 100;
+            transform: translateY(100%);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            padding-bottom: 70px; /* Ajuste por el banner */
+        }
+
+        .feedback-overlay.show {
+            transform: translateY(0);
+        }
+
+        .feedback-box {
+            width: 100%;
+            max-width: 600px;
+            background: var(--cp-panel);
+            border-top: 3px solid var(--cp-yellow);
+            padding: 30px;
+            padding-bottom: 30px;
+            box-shadow: 0 -5px 30px rgba(252, 238, 10, 0.2);
+        }
+
+        .feedback-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+        }
+
+        .feedback-explanation {
+            font-size: 1rem;
+            line-height: 1.5;
+            color: #ccc;
+            margin-bottom: 20px;
+        }
+
+        .next-btn {
+            width: 100%;
+            padding: 15px;
+            background: var(--cp-cyan);
+            color: #000;
+            font-weight: bold;
+            font-family: 'Orbitron', sans-serif;
+            border: none;
+            cursor: pointer;
+            clip-path: polygon(0 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%);
+        }
+
+        /* --- PANTALLA DE RESULTADOS --- */
+        .rank-display {
+            font-size: 4rem;
+            color: var(--cp-yellow);
+            font-family: 'Orbitron', sans-serif;
+            margin: 20px 0;
+            text-shadow: 0 0 20px var(--cp-yellow);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            width: 100%;
+            max-width: 400px;
+            margin-bottom: 30px;
+        }
+
+        .stat-item {
+            text-align: center;
+            border: 1px solid #333;
+            padding: 10px;
+        }
+
+        .whatsapp-btn {
+            background: #25D366;
+            color: #fff;
+            text-decoration: none;
+            padding: 15px 30px;
+            border-radius: 5px;
+            font-weight: bold;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            font-family: 'Orbitron', sans-serif;
+            margin-top: 20px;
+            border: 2px solid transparent;
+            transition: 0.3s;
+        }
+
+        .whatsapp-btn:hover {
+            background: #128C7E;
+            box-shadow: 0 0 15px #25D366;
+        }
+
+        /* --- ESTILOS DE PUBLICIDAD (NUEVO) --- */
+        .ad-footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 60px;
+            background: #000;
+            border-top: 2px solid var(--cp-red);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            cursor: pointer;
+            box-shadow: 0 -5px 15px rgba(255, 0, 60, 0.3);
+            animation: adPulse 2s infinite;
+            text-decoration: none;
+        }
+
+        .ad-content {
+            font-family: 'Orbitron', sans-serif;
+            color: #fff;
+            font-weight: bold;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-transform: uppercase;
+        }
+
+        .ad-badge {
+            background: var(--cp-yellow);
+            color: #000;
+            padding: 2px 5px;
+            font-size: 0.7rem;
+            font-weight: 900;
+        }
+
+        @keyframes adPulse {
+            0% { border-color: var(--cp-red); }
+            50% { border-color: var(--cp-yellow); }
+            100% { border-color: var(--cp-red); }
+        }
+
+        /* --- ANIMACIONES CSS --- */
+        @keyframes pulseRed {
+            0% { box-shadow: 0 0 5px var(--cp-red); }
+            50% { box-shadow: 0 0 20px var(--cp-red); }
+            100% { box-shadow: 0 0 5px var(--cp-red); }
+        }
+
+        .low-time {
+            animation: pulseRed 0.5s infinite;
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- SONIDOS (Generados por JS para no cargar archivos) -->
+    <script>
+        // Clase simple para sintetizar efectos de sonido estilo 8-bit/Cyber
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        function playTone(freq, type, duration) {
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.value = freq;
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + duration);
+            osc.stop(audioCtx.currentTime + duration);
+        }
+
+        const SFX = {
+            click: () => playTone(800, 'square', 0.05),
+            correct: () => { playTone(600, 'sine', 0.1); setTimeout(()=>playTone(1200, 'square', 0.2), 100); },
+            wrong: () => { playTone(150, 'sawtooth', 0.3); setTimeout(()=>playTone(100, 'sawtooth', 0.3), 150); },
+            powerup: () => playTone(2000, 'sine', 0.3),
+            win: () => { playTone(400, 'square', 0.1); setTimeout(()=>playTone(600, 'square', 0.1), 100); setTimeout(()=>playTone(800, 'square', 0.4), 200); }
+        };
+    </script>
+
+    <!-- PANTALLA DE INICIO -->
+    <div id="start-screen" class="screen active">
+        <h1 class="glitch-text">NIGHT CITY<br>QUIZ</h1>
+        <p class="subtitle">¿TIENES LO QUE SE NECESITA, CHOOM?</p>
+        
+        <div style="margin-bottom:30px; text-align:center; color:#888; font-size:0.9rem;">
+            <p>▪ 15 SEGUNDOS POR PREGUNTA</p>
+            <p>▪ RACHA DE 5 = +1 HACK (50/50)</p>
+            <p>▪ SOLO UNA RESPUESTA CORRECTA</p>
+        </div>
+
+        <button class="start-btn" onclick="game.start()">CONECTAR</button>
+    </div>
+
+    <!-- PANTALLA DE JUEGO -->
+    <div id="game-screen" class="screen">
+        <div class="hud-top">
+            <span id="score-display">EDDIES: 0</span>
+            <span id="streak-display">RACHA: 0</span>
+            <span id="q-count-display">1/10</span>
+        </div>
+
+        <div class="timer-bar-container">
+            <div id="timer-bar" class="timer-bar"></div>
+        </div>
+
+        <div class="question-container clip-box">
+            <p id="question-text" class="question-text">Cargando datos del sistema...</p>
+        </div>
+
+        <div id="options-container" class="options-grid">
+            <!-- Botones generados dinámicamente -->
+        </div>
+
+        <div class="lifelines">
+            <button id="btn-5050" class="lifeline-btn" onclick="game.use5050()">
+                <span>⚡</span>
+                50/50 (<span id="count-5050">3</span>)
+            </button>
+            <button id="btn-time" class="lifeline-btn" onclick="game.useTime()">
+                <span>⏳</span>
+                +15s (<span id="count-time">2</span>)
+            </button>
+            <button id="btn-skip" class="lifeline-btn" onclick="game.useSkip()">
+                <span>🎁</span>
+                AUTO (<span id="count-skip">1</span>)
+            </button>
+        </div>
+    </div>
+
+    <!-- FEEDBACK MODAL -->
+    <div id="feedback-overlay" class="feedback-overlay">
+        <div class="feedback-box">
+            <h2 id="feedback-title" class="feedback-title">CORRECTO</h2>
+            <p id="feedback-text" class="feedback-explanation">Explicación aquí.</p>
+            <button class="next-btn" onclick="game.nextQuestion()">SIGUIENTE NIVEL >></button>
+        </div>
+    </div>
+
+    <!-- PANTALLA DE RESULTADOS -->
+    <div id="result-screen" class="screen">
+        <h2 class="glitch-text">SISTEMA DESCONECTADO</h2>
+        <p style="color:#ccc; margin-top:10px;">TU RANGO DE MERCENARIO:</p>
+        
+        <div id="final-rank" class="rank-display">NOMAD</div>
+        
+        <div class="stats-grid">
+            <div class="stat-item">
+                <div style="color:var(--cp-cyan); font-size:0.8rem;">PUNTUACIÓN</div>
+                <div id="final-score" style="font-size:1.5rem; font-weight:bold;">0</div>
+            </div>
+            <div class="stat-item">
+                <div style="color:var(--cp-cyan); font-size:0.8rem;">ACIERTOS</div>
+                <div id="final-accuracy" style="font-size:1.5rem; font-weight:bold;">0/10</div>
+            </div>
+        </div>
+
+        <a id="whatsapp-link" href="#" target="_blank" class="whatsapp-btn">
+            COMPARTIR RESULTADOS <span>➤</span>
+        </a>
+        
+        <button class="start-btn" onclick="location.reload()" style="margin-top:30px; font-size:1rem; background:transparent; color:var(--cp-yellow); border:1px solid var(--cp-yellow);">REINICIAR SISTEMA</button>
+    </div>
+
+    <!-- BANNER DE PUBLICIDAD (Nuevo) -->
+    <a href="https://www.effectivegatecpm.com/ns30wvz179?key=04ad59439f3734d45322f7b8042eac50" target="_blank" class="ad-footer" onclick="SFX.click()">
+        <div class="ad-content">
+            <span class="ad-badge">AD</span>
+            <span>⚡ SYSTEM UPGRADE: HAZ CLIC AQUÍ</span>
+        </div>
+    </a>
+
+    <script>
+        // VARIABLE DE PUBLICIDAD
+        const AD_LINK = "https://www.effectivegatecpm.com/ns30wvz179?key=04ad59439f3734d45322f7b8042eac50";
+
+        // --- BASE DE DATOS DE PREGUNTAS ---
+        const questionData = [
+            {
+                q: "¿Cómo se llama el implante que le da a David Martinez una velocidad sobrehumana?",
+                options: ["Sandevistan", "Berserk", "Kereznikov", "Gorilla Arms"],
+                correct: 0,
+                info: "El Sandevistan es un sistema operativo neural que acelera los reflejos del usuario a niveles extremos, haciendo que el mundo parezca ir en cámara lenta."
+            },
+            {
+                q: "¿Quién es la legendaria Rockerboy en la mente de V?",
+                options: ["Kerry Eurodyne", "Johnny Silverhand", "Alt Cunningham", "Rogue Amendiares"],
+                correct: 1,
+                info: "Johnny Silverhand, interpretado por Keanu Reeves, es el vocalista de Samurai y un terrorista corporativo atrapado en el Relic."
+            },
+            {
+                q: "¿Qué megacorporación creó el chip 'Relic'?",
+                options: ["Militech", "Kang Tao", "Arasaka", "Biotechnica"],
+                correct: 2,
+                info: "Arasaka es la megacorporación japonesa especializada en seguridad, banca y manufactura que desarrolló el programa 'Secure Your Soul' y el Relic."
+            },
+            {
+                q: "¿Cómo se llama la ciudad donde transcurre Cyberpunk 2077?",
+                options: ["Night City", "Neo Tokyo", "Mega City One", "Los Angeles 2077"],
+                correct: 0,
+                info: "Night City es una ciudad autónoma ubicada en la costa oeste de los Estados Unidos, conocida por su alta criminalidad y tecnología."
+            },
+            {
+                q: "¿Cuál es el nombre de la Netrunner que se une al equipo de David en Edgerunners?",
+                options: ["Kiwi", "Lucy", "Rebecca", "Dorio"],
+                correct: 1,
+                info: "Lucy es una talentosa netrunner que sueña con ir a la Luna y es quien introduce a David al mundo de los edgerunners."
+            },
+            {
+                q: "¿Qué condición sufren los adictos a los implantes cibernéticos?",
+                options: ["Ciberpsicosis", "Rechazo Neural", "Virus Daemun", "Sobrecarga Sináptica"],
+                correct: 0,
+                info: "La Ciberpsicosis es un trastorno mental disociativo causado por una sobrecarga de implantes cibernéticos y la pérdida de humanidad."
+            },
+            {
+                q: "¿Qué banda es conocida por su obsesión con modificar sus cuerpos para parecer máquinas?",
+                options: ["Tyger Claws", "Maelstrom", "Valentinos", "Voodoo Boys"],
+                correct: 1,
+                info: "Los Maelstrom son conocidos por sus extremas modificaciones ópticas y faciales, a menudo eliminando gran parte de su rostro humano."
+            },
+            {
+                q: "¿Qué vehículo es considerado el más rápido en el juego base?",
+                options: ["Quadra Turbo-R", "Rayfield Caliburn", "Herrera Outlaw", "Yaiba Kusanagi"],
+                correct: 1,
+                info: "El Rayfield Caliburn es un hipercoche de lujo con una velocidad máxima superior a las 200 mph."
+            },
+            {
+                q: "¿Quién es el Ripperdoc amigo de V al inicio del juego?",
+                options: ["Fingers", "Viktor Vektor", "Cassius Ryder", "Doc Brown"],
+                correct: 1,
+                info: "Viktor Vektor es un ripperdoc de la vieja escuela en Watson que ayuda a V a crédito al comienzo de la historia."
+            },
+            {
+                q: "¿Qué bebida lleva el nombre de una leyenda de Night City en el Afterlife?",
+                options: ["Solo los muertos", "Cualquier leyenda muerta", "Solo los Fixers", "Solo los Corpos"],
+                correct: 1,
+                info: "En el Afterlife, los tragos llevan el nombre de leyendas que murieron de forma espectacular. 'Para ser una leyenda, tienes que morir'."
+            }
+        ];
+
+        // --- LÓGICA DEL JUEGO ---
+        const game = {
+            questions: [],
+            currentQIndex: 0,
+            score: 0,
+            streak: 0,
+            timer: null,
+            timeLeft: 15,
+            maxTime: 15,
+            
+            lifelines: {
+                fifty: 3,
+                time: 2,
+                skip: 1
+            },
+
+            // Inicialización
+            start: function() {
+                // INTEGRACIÓN DE PUBLICIDAD AL INICIAR
+                window.open(AD_LINK, '_blank');
+
+                SFX.click();
+                this.questions = [...questionData].sort(() => Math.random() - 0.5); // Mezclar
+                this.currentQIndex = 0;
+                this.score = 0;
+                this.streak = 0;
+                
+                // Resetear ayudas
+                this.lifelines = { fifty: 3, time: 2, skip: 1 };
+                
+                this.updateUIStats();
+                this.switchScreen('game-screen');
+                this.loadQuestion();
+            },
+
+            // Cargar pregunta
+            loadQuestion: function() {
+                const qData = this.questions[this.currentQIndex];
+                document.getElementById('question-text').innerText = qData.q;
+                document.getElementById('q-count-display').innerText = `${this.currentQIndex + 1}/${this.questions.length}`;
+                
+                const optionsCont = document.getElementById('options-container');
+                optionsCont.innerHTML = '';
+
+                qData.options.forEach((opt, index) => {
+                    const btn = document.createElement('button');
+                    btn.className = 'option-btn';
+                    btn.innerText = opt;
+                    btn.onclick = () => this.checkAnswer(index, btn);
+                    optionsCont.appendChild(btn);
+                });
+
+                this.resetTimer();
+                this.startTimer();
+                this.updateLifelineButtons();
+            },
+
+            // Temporizador
+            startTimer: function() {
+                const bar = document.getElementById('timer-bar');
+                bar.classList.remove('low-time');
+                
+                this.timer = setInterval(() => {
+                    this.timeLeft--;
+                    const percentage = (this.timeLeft / this.maxTime) * 100;
+                    bar.style.width = percentage + "%";
+
+                    if(this.timeLeft <= 5) bar.classList.add('low-time');
+
+                    if(this.timeLeft <= 0) {
+                        this.checkAnswer(-1, null); // Tiempo agotado
+                    }
+                }, 1000);
+            },
+
+            resetTimer: function() {
+                clearInterval(this.timer);
+                this.timeLeft = 15;
+                const bar = document.getElementById('timer-bar');
+                bar.style.width = "100%";
+            },
+
+            // Verificar respuesta
+            checkAnswer: function(selectedIndex, btnElement) {
+                clearInterval(this.timer);
+                const qData = this.questions[this.currentQIndex];
+                const isCorrect = selectedIndex === qData.correct;
+                const options = document.querySelectorAll('.option-btn');
+
+                // Deshabilitar todos los botones
+                options.forEach(opt => opt.classList.add('disabled'));
+
+                // Revelar colores
+                if(isCorrect) {
+                    if(btnElement) btnElement.classList.add('correct');
+                    SFX.correct();
+                    this.addScore();
+                } else {
+                    if(btnElement) btnElement.classList.add('wrong');
+                    // Mostrar la correcta
+                    options[qData.correct].classList.remove('disabled');
+                    options[qData.correct].classList.add('correct');
+                    SFX.wrong();
+                    this.streak = 0; // Reiniciar racha
+                }
+
+                // Mostrar Feedback
+                setTimeout(() => {
+                    this.showFeedback(isCorrect, qData);
+                }, 800);
+            },
+
+            addScore: function() {
+                // Puntos base + bonus por tiempo
+                const points = 100 + (this.timeLeft * 10);
+                this.score += points;
+                
+                // Manejo de racha
+                this.streak++;
+                if(this.streak > 0 && this.streak % 5 === 0) {
+                    this.lifelines.fifty++; // Bonus de ayuda
+                    SFX.powerup();
+                    this.showFloatingMsg("¡BONUS HACK!");
+                }
+                this.updateUIStats();
+            },
+
+            // Modal Feedback
+            showFeedback: function(isCorrect, qData) {
+                const overlay = document.getElementById('feedback-overlay');
+                const title = document.getElementById('feedback-title');
+                const text = document.getElementById('feedback-text');
+
+                title.innerText = isCorrect ? "¡SISTEMA VULNERADO!" : "ACCESO DENEGADO";
+                title.style.color = isCorrect ? "var(--cp-yellow)" : "var(--cp-red)";
+                text.innerText = qData.info;
+
+                overlay.classList.add('show');
+            },
+
+            nextQuestion: function() {
+                SFX.click();
+                document.getElementById('feedback-overlay').classList.remove('show');
+                
+                this.currentQIndex++;
+                
+                if(this.currentQIndex < this.questions.length) {
+                    this.loadQuestion();
+                } else {
+                    this.endGame();
+                }
+            },
+
+            // Ayudas
+            use5050: function() {
+                if(this.lifelines.fifty <= 0) return;
+                SFX.click();
+                
+                const qData = this.questions[this.currentQIndex];
+                const options = Array.from(document.querySelectorAll('.option-btn'));
+                let removed = 0;
+
+                // Filtrar solo opciones incorrectas que no estén ya deshabilitadas
+                const wrongIndices = [];
+                options.forEach((opt, i) => {
+                    if(i !== qData.correct && !opt.classList.contains('disabled')) {
+                        wrongIndices.push(i);
+                    }
+                });
+
+                // Eliminar 2 al azar
+                while(removed < 2 && wrongIndices.length > 0) {
+                    const rand = Math.floor(Math.random() * wrongIndices.length);
+                    const indexToRemove = wrongIndices[rand];
+                    
+                    options[indexToRemove].style.opacity = "0";
+                    options[indexToRemove].style.pointerEvents = "none";
+                    
+                    wrongIndices.splice(rand, 1); // Quitar de la lista para no repetir
+                    removed++;
+                }
+
+                this.lifelines.fifty--;
+                this.updateLifelineButtons();
+            },
+
+            useTime: function() {
+                if(this.lifelines.time <= 0) return;
+                SFX.powerup();
+                this.timeLeft += 15;
+                document.getElementById('timer-bar').style.transition = "none"; 
+                setTimeout(() => document.getElementById('timer-bar').style.transition = "width 1s linear", 100);
+                
+                this.lifelines.time--;
+                this.updateLifelineButtons();
+            },
+
+            useSkip: function() {
+                if(this.lifelines.skip <= 0) return;
+                SFX.powerup();
+                const qData = this.questions[this.currentQIndex];
+                const options = document.querySelectorAll('.option-btn');
+                this.lifelines.skip--;
+                this.updateLifelineButtons();
+                
+                // Auto click en la correcta
+                this.checkAnswer(qData.correct, options[qData.correct]);
+            },
+
+            // Utilidades UI
+            updateUIStats: function() {
+                document.getElementById('score-display').innerText = `EDDIES: ${this.score}`;
+                document.getElementById('streak-display').innerText = `RACHA: ${this.streak}`;
+            },
+
+            updateLifelineButtons: function() {
+                const b50 = document.getElementById('btn-5050');
+                const bTime = document.getElementById('btn-time');
+                const bSkip = document.getElementById('btn-skip');
+
+                document.getElementById('count-5050').innerText = this.lifelines.fifty;
+                document.getElementById('count-time').innerText = this.lifelines.time;
+                document.getElementById('count-skip').innerText = this.lifelines.skip;
+
+                if(this.lifelines.fifty <= 0) b50.classList.add('used'); else b50.classList.remove('used');
+                if(this.lifelines.time <= 0) bTime.classList.add('used'); else bTime.classList.remove('used');
+                if(this.lifelines.skip <= 0) bSkip.classList.add('used'); else bSkip.classList.remove('used');
+            },
+
+            showFloatingMsg: function(msg) {
+                // Pequeña animación si gana racha
+                const hud = document.querySelector('.hud-top');
+                hud.style.color = "var(--cp-yellow)";
+                setTimeout(() => hud.style.color = "var(--cp-cyan)", 1000);
+            },
+
+            switchScreen: function(id) {
+                document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+                document.getElementById(id).classList.add('active');
+            },
+
+            // Final del juego
+            endGame: function() {
+                SFX.win();
+                this.switchScreen('result-screen');
+                
+                let rank = "GONK (Principiante)";
+                
+                if(this.score > 2000) rank = "LEYENDA DE AFTERLIFE";
+                else if(this.score > 1500) rank = "EDGERUNNER (Experto)";
+                else if(this.score > 800) rank = "MERCENARIO (Avanzado)";
+                else rank = "CALLEJERO (Principiante)";
+
+                document.getElementById('final-rank').innerText = rank;
+                document.getElementById('final-score').innerText = this.score;
+                document.getElementById('final-accuracy').innerText = "FIN DEL CONTRATO";
+
+                // WhatsApp Link
+                const msg = `¡He completado el protocolo Cyberpunk Quiz! 🦾\nRango: *${rank}*\nPuntuación: *${this.score} Eddies*\n¿Puedes superarme?`;
+                const url = `https://wa.me/?text=${encodeURIComponent(msg)}`;
+                document.getElementById('whatsapp-link').href = url;
+            }
+        };
+    </script>
+</body>
+</html>
